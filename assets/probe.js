@@ -159,34 +159,38 @@ function classifyProbe(net, content, ctx) {
 
   // --- le paquet est sorti : reste a savoir QUI a repondu
 
-  // preuve directe, elle prime sur tout le reste
-  if (hasIcon && content.decoded) {
-    return { state: STATE.OPEN, confidence: "haute",
-             why: "image authentique du site recue -- le vrai serveur repond" };
+  // CAS 1 : une icone est declaree, donc verifiee chargeable depuis
+  // une autre page (voir targets.js). Son resultat fait foi dans les
+  // DEUX sens : c'est la seule situation ou un echec d'image accuse.
+  if (hasIcon) {
+    if (content.decoded) {
+      return { state: STATE.OPEN, confidence: "haute",
+               why: "image authentique du site recue -- le vrai serveur repond" };
+    }
+    if (suspiciouslyFast) {
+      return { state: STATE.FILTERED, confidence: "haute",
+               why: "reponse locale instantanee, contenu non conforme -- portail de blocage" };
+    }
+    return { state: STATE.FILTERED, confidence: "moyenne",
+             why: "connexion acceptee, mais le contenu recu n'est pas celui du site" };
   }
 
-  // le reseau fabrique des reponses : aboutir ne prouve plus rien
+  // CAS 2 : aucune icone exploitable (le site interdit le chargement
+  // de ses images ailleurs, comme claude.ai). L'absence de preuve
+  // n'etant pas une preuve, seul le comportement reseau peut trancher,
+  // et uniquement pour accuser -- jamais pour disculper franchement.
   if (!networkHonest) {
     return { state: STATE.FILTERED,
              confidence: suspiciouslyFast ? "haute" : "moyenne",
-             why: suspiciouslyFast
-               ? "reponse locale instantanee sur un reseau qui repond a tout"
-               : "ce reseau repond meme aux adresses inexistantes -- reponse non fiable" };
+             why: "ce reseau repond meme aux adresses inexistantes -- reponse non fiable" };
   }
-
-  // reponse trop rapide pour venir de loin
   if (suspiciouslyFast) {
     return { state: STATE.FILTERED, confidence: "moyenne",
              why: "reponse en " + Math.round(net.ms) + " ms, trop rapide pour le serveur distant" };
   }
-
-  // le reseau est honnete et le delai correspond a un vrai trajet :
-  // le paquet a reellement voyage. L'image, elle, peut echouer pour
-  // des raisons qui ne regardent pas le reseau.
-  return { state: STATE.OPEN, confidence: "moyenne",
-           why: hasIcon
-             ? "le serveur distant a repondu ; l'image n'est pas verifiable ici (politique du site)"
-             : "le serveur distant a repondu dans un delai normal" };
+  return { state: STATE.OPEN, confidence: "faible",
+           why: "le serveur distant a repondu dans un delai normal ; " +
+                "ce site interdit la verification de son contenu, doute possible" };
 }
 
 /* ----------------------------------------------------------

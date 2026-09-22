@@ -35,7 +35,6 @@ const TARGETS = [
   { name: "CHATGPT", lat: 37.8, lng: -122.4, ab: "GPT", color: "#10a37f",
     probes: [
       { label: "chat", url: "https://chatgpt.com", icon: "https://chatgpt.com/favicon.ico" },
-      { label: "connexion", url: "https://auth.openai.com" },
     ] },
 
   { name: "CLAUDE", lat: 41.0, lng: -124.5, ab: "C", color: "#d97757",
@@ -54,8 +53,8 @@ const TARGETS = [
 
   { name: "GEMINI", lat: 36.6, lng: -117.6, ab: "G", color: "#4285f4",
     probes: [
-      { label: "app", url: "https://gemini.google.com" },
-      { label: "studio", url: "https://aistudio.google.com" },
+      { label: "app", url: "https://gemini.google.com",
+        icon: "https://www.gstatic.com/lamda/images/favicon_v1_150160cddff7f294ce30.svg" },
     ] },
 
   { name: "META AI", lat: 33.4, lng: -115.8, ab: "M", color: "#0668e1",
@@ -66,7 +65,6 @@ const TARGETS = [
   { name: "GROK", lat: 39.6, lng: -119.4, ab: "X", color: "#1a1a1a",
     probes: [
       { label: "app", url: "https://grok.com", icon: "https://grok.com/favicon.ico" },
-      { label: "via X", url: "https://x.com/i/grok" },
     ] },
 
   { name: "COPILOT", lat: 47.7, lng: -122.1, ab: "CP", color: "#0067b8",
@@ -131,14 +129,22 @@ const TARGETS = [
    Domaines d'infrastructure quasiment jamais filtres en
    entreprise. Ils ne s'affichent pas sur la carte : ils
    mesurent a quoi ressemble une reponse NORMALE sur ce reseau.
+
+   Leurs icones ont ete verifiees chargeables depuis une autre
+   page (pas d'en-tete Cross-Origin-Resource-Policy: same-origin,
+   et un type MIME d'image). Un temoin dont l'image ne peut pas
+   se charger fausserait la calibration en faisant croire que la
+   sonde de contenu est inutilisable sur ce poste.
    ---------------------------------------------------------- */
 const CONTROLS = [
   { name: "cloudflare", url: "https://www.cloudflare.com",
-    icon: "https://www.cloudflare.com/favicon.ico" },
+    icon: "https://www.cloudflare.com/favicon.ico" },            // CORP: cross-origin -> autorise
   { name: "wikipedia", url: "https://www.wikipedia.org",
     icon: "https://www.wikipedia.org/static/favicon/wikipedia.ico" },
-  { name: "microsoft", url: "https://www.microsoft.com",
-    icon: "https://c.s-microsoft.com/favicon.ico" },
+  { name: "wikimedia", url: "https://commons.wikimedia.org",
+    icon: "https://upload.wikimedia.org/wikipedia/commons/4/4a/Commons-logo.svg" },
+  // c.s-microsoft.com/favicon.ico a ete retire : il renvoie du
+  // text/html et non une image, ce qui faussait la calibration.
 ];
 
 /* ----------------------------------------------------------
