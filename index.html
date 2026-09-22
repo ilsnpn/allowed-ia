@@ -25,8 +25,8 @@
 <!-- compteurs -->
 <div class="score hidden" id="score">
   <div class="o"><div class="v" id="nOpen">0</div><div class="k">OUVERTS</div></div>
-  <div class="f"><div class="v" id="nFilt">0</div><div class="k">FILTRES</div></div>
-  <div class="b"><div class="v" id="nBlock">0</div><div class="k">COUPES</div></div>
+  <div class="p"><div class="v" id="nPart">0</div><div class="k">PARTIELS</div></div>
+  <div class="f"><div class="v" id="nFilt">0</div><div class="k">BLOQUES</div></div>
   <div class="u"><div class="v" id="nWait">0</div><div class="k">RESTANT</div></div>
 </div>
 
@@ -38,7 +38,7 @@
 </div>
 
 <div class="legend">
-  <i class="g"></i>OUVERT &nbsp; <i class="r"></i>FILTRE / COUPE &nbsp; <i class="a"></i>NON TESTE<br>
+  <i class="g"></i>OUVERT &nbsp; <i class="w"></i>PARTIEL &nbsp; <i class="r"></i>BLOQUE &nbsp; <i class="a"></i>NON TESTE<br>
   test execute dans votre navigateur — <a href="#" id="howLink">comment ca marche</a>
 </div>
 
@@ -59,22 +59,26 @@
        services d'IA generative sont joignables sur le reseau que vous utilisez en ce moment.
        Utile pour savoir ce que filtre un reseau d'entreprise, une ecole ou un hotspot public.</p>
 
-    <p class="d">Chaque service subit deux mesures independantes :</p>
+    <p class="d">Chaque service est sonde de trois manieres :</p>
     <ul>
-      <li><b>Le paquet sort-il ?</b> une requete est envoyee au site ; si le reseau la refuse,
-          la connexion est coupee.</li>
-      <li><b>Qui a repondu ?</b> une image du site est chargee. Si elle se decode, c'est bien
-          le vrai serveur. Un portail de blocage renvoie du texte : l'image echoue.</li>
+      <li><b>Le paquet sort-il ?</b> une requete est envoyee ; si le reseau la refuse,
+          l'acces est coupe.</li>
+      <li><b>Qui a repondu ?</b> une image du site est chargee. Si elle se decode, le vrai
+          serveur a repondu. <b>L'inverse ne prouve rien</b> : beaucoup de sites interdisent
+          le chargement de leurs images depuis ailleurs, meme quand ils sont accessibles.</li>
+      <li><b>Le reseau ment-il ?</b> des adresses qui ne peuvent pas exister sont testees.
+          Sur un reseau normal elles echouent. Si elles repondent, un equipement fabrique
+          des reponses pour tout, et les criteres sont durcis.</li>
     </ul>
-    <p class="d">Des sites d'infrastructure neutres sont mesures d'abord, pour connaitre la
-       latence normale de votre reseau et reperer les reponses trop rapides pour etre venues
-       de l'autre bout du monde.</p>
+    <p class="d">Un service peut avoir <b>plusieurs points d'acces</b> : la page de chat
+       ouverte et le lancement des modeles bloque, par exemple. Il est alors marque
+       <b>partiel</b>, avec le detail au survol.</p>
 
     <div class="note">
       <b>A savoir avant de lancer.</b>
       Le navigateur interdit de lire le contenu d'un autre site : le verdict repose sur des
-      indices, pas sur la lecture de la page de blocage. Il reste donc une marge d'erreur,
-      indiquee pour chaque ligne.<br>
+      indices croises, pas sur la lecture de la page de blocage. Chaque ligne affiche donc
+      son niveau de confiance.<br>
       Ces requetes partent vers les sites testes depuis votre poste et <b>apparaitront dans
       les journaux du reseau</b> que vous utilisez, au meme titre qu'une visite normale.
     </div>

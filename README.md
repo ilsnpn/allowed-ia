@@ -28,8 +28,8 @@ d'un autre domaine : c'est la règle CORS, et elle n'est pas contournable. La ve
 `curl` cherchait `zscaler`, `access denied`… dans le corps de la page ; ici c'est
 impossible.
 
-Le test repose donc sur **deux sondes indépendantes** par service, puis sur leur
-croisement.
+Le test repose donc sur trois sondes, et surtout sur **une règle d'asymétrie** qui
+détermine ce que chacune a le droit de prouver.
 
 ### 1. Sonde réseau — le paquet sort-il ?
 
@@ -46,47 +46,78 @@ bien fonctionné.
 
 Le favicon du site est chargé **en tant qu'image**. Le navigateur refuse de nous la
 montrer, mais il accepte de la décoder. Si le décodage réussit, l'octet reçu est bien
-une image : le vrai serveur a répondu. Un portail de blocage, lui, renvoie du HTML — le
-décodage échoue.
+une image : le vrai serveur a répondu.
 
-### 3. Calibration
+**Sa réussite prouve quelque chose ; son échec ne prouve rien.** C'est le point le plus
+important du moteur, et une première version s'y est trompée. Beaucoup de sites
+interdisent le chargement de leurs images depuis une autre page via l'en-tête
+`Cross-Origin-Resource-Policy: same-origin` — c'est le cas de `claude.ai` :
 
-Trois domaines d'infrastructure neutres (Cloudflare, Wikipedia, Microsoft) sont mesurés
-en premier. Ils donnent :
+```
+$ curl -sI https://claude.ai/favicon.ico | grep -i cross-origin
+Cross-Origin-Resource-Policy: same-origin
+```
 
-- la **latence normale** du réseau, pour repérer ensuite une réponse trop rapide pour
-  être venue de l'autre bout du monde — signe d'un équipement local qui répond à la
-  place du serveur ;
-- un **garde-fou** : si la sonde contenu échoue même sur ces témoins, c'est le
-  navigateur ou une extension qui la bloque, pas les IA. Le moteur la désactive alors
-  et le signale, au lieu d'accuser seize sites à tort.
+L'image échoue alors **quel que soit l'état du réseau**, y compris depuis une connexion
+parfaitement libre. Un échec d'image ne peut donc jamais, à lui seul, faire conclure à
+un blocage. Les services concernés déclarent simplement `icon` absent dans
+`targets.js`.
+
+### 3. Canaris — le réseau ment-il ?
+
+Des adresses qui ne peuvent pas exister sont testées, sur le TLD `.invalid` réservé par
+la [RFC 2606](https://www.rfc-editor.org/rfc/rfc2606) et résolu nulle part, plus un
+sous-domaine aléatoire d'un domaine réel.
+
+Sur un réseau honnête, ces adresses échouent — c'est le résultat attendu. Si elles
+**répondent**, un équipement fabrique des réponses pour tout ce qui passe : le fait
+qu'une requête aboutisse ne prouve alors plus rien, et le moteur durcit ses critères.
+
+C'est le canari, et non l'échec d'une image, qui autorise un verdict négatif.
+
+### Calibration
+
+Trois domaines d'infrastructure neutres (Cloudflare, Wikipedia, Microsoft) donnent la
+**latence normale** du réseau. Une réponse nettement plus rapide que cette référence
+n'a pas eu le temps de traverser l'Atlantique : elle vient d'un équipement local.
 
 ### Table de décision
 
-| Paquet sort | Image authentique | Verdict | Confiance |
-|---|---|---|---|
-| oui | oui | **Ouvert** | haute |
-| oui | non, réponse instantanée | **Filtré** — portail de blocage | haute |
-| oui | non, délai normal | **Filtré** | moyenne |
-| non | oui | **Filtré** — filtrage par URL | moyenne |
-| non | non, refus immédiat | **Coupé** — DNS ou reset | haute |
-| non | non, délai expiré | **Coupé** — paquets absorbés | haute |
+Pour un point d'accès, réseau honnête :
 
-Chaque ligne du panneau affiche son niveau de confiance (`●` à `●●●`) et, au survol, le
-détail des deux sondes.
+| Paquet sort | Image authentique | Délai | Verdict | Confiance |
+|---|---|---|---|---|
+| oui | oui | — | **Ouvert** | haute |
+| oui | non / non vérifiable | normal | **Ouvert** | moyenne |
+| oui | non | anormalement court | **Filtré** | moyenne |
+| non | oui | — | **Filtré** (par URL) | moyenne |
+| non | non | refus immédiat | **Coupé** | haute |
+| non | non | délai expiré | **Coupé** | haute |
+
+Si un canari a répondu, la deuxième ligne bascule en **Filtré** : sur un réseau qui
+répond à tout, aboutir ne veut plus rien dire.
+
+### Plusieurs points d'accès par service
+
+Un service n'est pas un seul domaine. MiniMax laisse passer `chat.minimax.io` mais
+bloque `agent.minimax.io` : la page s'ouvre, les modèles restent hors de portée.
+
+Chaque service liste donc ses points d'accès, et le verdict devient **partiel** (ambre)
+quand les uns passent et les autres non. Le détail au survol indique lesquels.
 
 ---
 
 ## Limites — à lire avant de conclure
 
-- **Pas de lecture de la page de blocage.** Le verdict repose sur des indices, pas sur
-  une preuve. Un proxy qui renvoie sa page d'erreur en HTTP 200 avec une vraie image
-  peut passer pour un site ouvert.
-- **« Filtré » ne veut pas dire « votre entreprise l'a décidé ».** Le service peut être
+- **Pas de lecture de la page de blocage.** Le verdict repose sur des indices croisés,
+  pas sur une preuve. Chaque ligne affiche sa confiance (`●` à `●●●`) ; un `●●` ne se
+  cite pas comme un fait.
+- **« Bloqué » ne veut pas dire « votre entreprise l'a décidé ».** Le service peut être
   en panne, ou refuser votre pays. Sans test de référence côté serveur, les deux cas
   sont indiscernables ; le site ne prétend pas trancher.
 - **Un service joignable n'est pas un service utilisable.** La page d'accueil peut
-  répondre alors que la connexion au compte, elle, est bloquée.
+  répondre alors que la connexion au compte est bloquée — d'où les points d'accès
+  multiples, qui réduisent cet angle mort sans le supprimer.
 - **Ces requêtes sont visibles.** Elles partent vers les sites testés depuis votre poste
   et apparaîtront dans les journaux du réseau utilisé, comme une visite normale.
 
@@ -130,19 +161,27 @@ réinitialiser.
 
 ---
 
-## Ajouter un service à tester
+## Ajouter un service, ou un point d'accès
 
 Une seule entrée dans [`assets/targets.js`](assets/targets.js), tout le reste suit —
 globe, planisphère, panneau, relevé :
 
 ```js
-{ name: "NOUVELLE IA", url: "https://exemple.ai",
-  icon: "https://exemple.ai/favicon.ico",
-  lat: 37.8, lng: -122.4, ab: "NI", color: "#ff7000" },
+{ name: "NOUVELLE IA", lat: 37.8, lng: -122.4, ab: "NI", color: "#ff7000",
+  probes: [
+    { label: "chat",  url: "https://exemple.ai", icon: "https://exemple.ai/favicon.ico" },
+    { label: "agent", url: "https://agent.exemple.ai" },
+  ] },
 ```
 
-`icon` doit être une image servie par le **même domaine** que `url` : c'est ce qui rend
-la sonde de contenu valide.
+- `icon` doit être une image servie par le **même domaine** que `url` : c'est ce qui
+  rend la sonde de contenu valide.
+- `icon` est **facultatif**. Si le site renvoie `Cross-Origin-Resource-Policy:
+  same-origin`, mieux vaut l'omettre : la sonde échouerait toujours sans rien
+  apprendre. Vérification :
+  ```bash
+  curl -sI https://exemple.ai/favicon.ico | grep -i cross-origin
+  ```
 
 ---
 
@@ -151,8 +190,8 @@ la sonde de contenu valide.
 ```
 index.html            page unique
 assets/
-  targets.js          liste des services testés + témoins de calibration
-  probe.js            moteur : les deux sondes, la calibration, le verdict
+  targets.js          services testés, points d'accès, témoins, canaris
+  probe.js            les trois sondes, la calibration, les verdicts
   app.js              globe 3D, planisphère, panneau, relevé
   style.css
   globe.gl.min.js     librairie 3D, servie en local et non depuis un CDN

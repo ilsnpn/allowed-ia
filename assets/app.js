@@ -7,17 +7,18 @@
 
 const COLORS = {
   OPEN:     "#19e68c",
+  PARTIAL:  "#ffb020",   // une partie du service passe, le reste non
   FILTERED: "#ff3355",
   BLOCKED:  "#8e1b30",   // plus sombre que "filtre" : rien n'est passe du tout
   TESTING:  "#39d0ff",
   UNKNOWN:  "#5a7a8a",
 };
 const SHORT = {
-  OPEN: "OUVERT", FILTERED: "FILTRE", BLOCKED: "COUPE",
+  OPEN: "OUVERT", PARTIAL: "PARTIEL", FILTERED: "FILTRE", BLOCKED: "COUPE",
   TESTING: "TEST", UNKNOWN: "—",
 };
 const CSS_CLASS = {
-  OPEN: "ok", FILTERED: "ko", BLOCKED: "ko",
+  OPEN: "ok", PARTIAL: "warn", FILTERED: "ko", BLOCKED: "ko",
   TESTING: "test", UNKNOWN: "off",
 };
 const CONF_MARK = { haute: "●●●", moyenne: "●●", faible: "●" };
@@ -28,7 +29,9 @@ const introEl = $("intro"), scoreEl = $("score"), panelEl = $("panel"), tipEl = 
 
 let snap = {
   results: {}, current: null, calibrated: false, running: false, pass: 0,
-  summary: { OPEN:0, FILTERED:0, BLOCKED:0, UNKNOWN: TARGETS.length, total: TARGETS.length },
+  networkHonest: true, contentTrusted: true,
+  summary: { OPEN:0, PARTIAL:0, FILTERED:0, BLOCKED:0,
+             UNKNOWN: TARGETS.length, total: TARGETS.length },
 };
 let world = null;
 let showLogos = false;
@@ -49,6 +52,7 @@ function hexToRgba(hex, a){
 const engine = new ProbeEngine({
   targets: TARGETS,
   controls: CONTROLS,
+  canaries: CANARIES,
   onUpdate: s => { snap = s; render(); },
   onTarget: name => { if (world) fireShot(name); },
 });
@@ -148,16 +152,24 @@ function refreshGlobe(){
 function render(){
   const s = snap.summary;
   $("nOpen").textContent  = s.OPEN;
-  $("nFilt").textContent  = s.FILTERED;
-  $("nBlock").textContent = s.BLOCKED;
+  $("nPart").textContent  = s.PARTIAL;
+  $("nFilt").textContent  = s.FILTERED + s.BLOCKED;
   $("nWait").textContent  = s.UNKNOWN;
 
   listEl.innerHTML = TARGETS.map(t => {
     const r = snap.results[t.name];
     const st = r ? r.state : "UNKNOWN";
     const live = t.name === snap.current ? " live" : "";
-    const extra = r && st === "OPEN" ? r.ms + "ms" : "";
     const conf = r && r.confidence && st !== "TESTING" ? CONF_MARK[r.confidence] : "";
+
+    // un service a plusieurs portes : on montre combien sont ouvertes
+    let extra = "";
+    if (r && r.probes && r.probes.length > 1 && st !== "TESTING"){
+      extra = r.probes.filter(p => p.state === "OPEN").length + "/" + r.probes.length;
+    } else if (r && st === "OPEN"){
+      extra = r.ms + "ms";
+    }
+
     return `<div class="prow ${CSS_CLASS[st]}${live}" data-n="${t.name}">
       <span class="dot"></span>
       <span class="n">${t.name}</span>
@@ -169,7 +181,10 @@ function render(){
   if (snap.calibrated){
     footEl.innerHTML =
       `reseau de reference : <b>${snap.baselineMs} ms</b><br>` +
-      `verification du contenu : <b>${snap.contentTrusted ? "active" : "indisponible"}</b>` +
+      (snap.networkHonest
+        ? `domaines inexistants : <b>rejetes</b> (reseau honnete)`
+        : `<b style="color:var(--warn)">ce reseau repond meme aux adresses ` +
+          `inexistantes</b> — criteres durcis`) +
       (snap.pass > 1 ? `<br>tour n° <b>${snap.pass}</b>` : "");
   }
 
@@ -195,15 +210,18 @@ listEl.addEventListener("mouseover", e => {
   const t = TARGETS.find(x => x.name === row.dataset.n);
   if (!r || r.state === "TESTING"){ tipEl.classList.add("hidden"); return; }
 
+  const probeRows = (r.probes || []).map(p => `
+    <div class="pp ${CSS_CLASS[p.state]}">
+      <div class="kv"><span><b>${p.label}</b></span><span>${SHORT[p.state]} · ${p.ms} ms</span></div>
+      <div class="w">${p.why}</div>
+    </div>`).join("");
+
   tipEl.innerHTML =
     `<div class="t">${t.name} — ${SHORT[r.state]}</div>
      <div class="w">${r.why}</div>
      <div class="kv"><span>confiance</span><span>${r.confidence}</span></div>
-     <div class="kv"><span>delai</span><span>${r.ms} ms</span></div>
-     <div class="kv"><span>paquet sorti</span><span>${r.netReached ? "oui" : "non"}</span></div>
-     <div class="kv"><span>contenu authentique</span><span>${
-        snap.contentTrusted ? (r.contentDecoded ? "oui" : "non") : "non verifiable"}</span></div>
-     ${r.flips ? `<div class="kv"><span>changements</span><span>${r.flips}</span></div>` : ""}`;
+     ${r.flips ? `<div class="kv"><span>changements de verdict</span><span>${r.flips}</span></div>` : ""}
+     ${probeRows}`;
   tipEl.classList.remove("hidden");
 
   const b = row.getBoundingClientRect();
