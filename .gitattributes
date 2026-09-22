@@ -1,0 +1,9 @@
+* text=auto eol=lf
+
+# scripts Windows : doivent garder les fins de ligne CRLF
+*.bat text eol=crlf
+
+# binaires : jamais de conversion
+*.jpg binary
+*.png binary
+*.ico binary

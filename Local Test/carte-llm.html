@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CARTE ACCES LLM</title>
+<style>
+  :root{
+    --ok:#19e68c; --ko:#ff3355; --warn:#ffb020; --off:#5a7a8a;
+    --cyan:#39d0ff; --ink:#cfe6ee; --dim:#5f7f8c;
+    --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#000;color:var(--ink);font-family:var(--mono)}
+  #globe{position:absolute;inset:0}
+
+  .hud{position:absolute;z-index:10;pointer-events:none}
+  .hud.tl{top:22px;left:26px}
+  .hud.tl h1{font-size:1rem;letter-spacing:.3em;color:var(--cyan);text-shadow:0 0 12px rgba(57,208,255,.6)}
+  .hud.tl .sub{font-size:.68rem;color:var(--dim);letter-spacing:.14em;margin-top:4px}
+  .hud.tl .ts{font-size:.68rem;color:var(--ink);margin-top:10px}
+  .hud.tl .ts b{color:var(--cyan)}
+  .hud.tl .cur{font-size:.68rem;margin-top:4px;color:var(--dim)}
+  .hud.tl .cur b{color:#fff}
+
+  .panel{
+    position:absolute;top:22px;right:26px;z-index:10;width:280px;
+    background:rgba(4,14,20,.78);border:1px solid rgba(57,208,255,.25);
+    border-radius:6px;padding:14px 16px;backdrop-filter:blur(4px);
+    box-shadow:0 0 24px rgba(57,208,255,.08);
+  }
+  .panel h2{font-size:.66rem;letter-spacing:.24em;color:var(--cyan);margin-bottom:10px}
+  .prow{display:flex;align-items:baseline;gap:8px;font-size:.72rem;padding:3px 0;border-radius:4px}
+  .prow.live{background:rgba(57,208,255,.12)}
+  .prow .dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .prow .n{flex:1;letter-spacing:.04em}
+  .prow .s{font-size:.62rem;letter-spacing:.1em}
+  .prow.ok  .dot{background:var(--ok);box-shadow:0 0 8px var(--ok)}   .prow.ok .s{color:var(--ok)}
+  .prow.ko  .dot{background:var(--ko);box-shadow:0 0 8px var(--ko)}   .prow.ko .s{color:var(--ko)}
+  .prow.warn .dot{background:var(--warn);box-shadow:0 0 8px var(--warn)} .prow.warn .s{color:var(--warn)}
+  .prow.off .dot{background:var(--off)} .prow.off .s{color:var(--off)}
+
+  .legend{position:absolute;bottom:20px;left:26px;z-index:10;font-size:.66rem;color:var(--dim);letter-spacing:.1em;line-height:1.9}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+  .legend .g{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+  .legend .r{background:var(--ko);box-shadow:0 0 6px var(--ko)}
+  .legend .a{background:var(--warn);box-shadow:0 0 6px var(--warn)}
+
+#fsBtn,#logoBtn,#mapBtn{
+    position:absolute;bottom:20px;z-index:10;
+    font-family:var(--mono);font-size:.68rem;letter-spacing:.16em;
+    color:var(--cyan);background:rgba(4,14,20,.78);
+    border:1px solid rgba(57,208,255,.35);border-radius:6px;
+    padding:9px 16px;cursor:pointer;
+  }
+  #fsBtn{right:26px}
+  #logoBtn{right:190px}
+  #mapBtn{right:372px}
+  #fsBtn:hover,#logoBtn:hover,#mapBtn:hover{background:rgba(57,208,255,.12)}
+
+  /* badge "logo" (monogramme colore, pas le logo officiel) */
+  .badge{
+    width:30px;height:30px;border-radius:50%;position:relative;
+    display:flex;align-items:center;justify-content:center;
+    border:2px solid rgba(255,255,255,.85);
+    box-shadow:0 0 10px rgba(0,0,0,.5);
+    transform:translate(-50%,-50%);
+    background:var(--bg);
+  }
+  .badge .ab{
+    color:#fff;font-family:var(--mono);font-weight:700;
+    font-size:.62rem;letter-spacing:.02em;pointer-events:none;
+  }
+  .badge .dot{
+    position:absolute;right:-2px;bottom:-2px;width:10px;height:10px;
+    border-radius:50%;background:var(--dot);border:2px solid #04141b;
+  }
+
+  .wait{
+    position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.55);text-align:center;font-size:.8rem;line-height:2;letter-spacing:.1em;color:var(--dim);
+  }
+  .wait b{color:var(--cyan)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div id="globe"></div>
+<canvas id="flat" class="hidden" style="position:absolute;inset:0;z-index:1;width:100%;height:100%"></canvas>
+
+<div class="hud tl">
+  <h1>ACCES LLM</h1>
+  <div class="sub">SURVEILLANCE TEMPS REEL // PARE-FEU ENTREPRISE</div>
+  <div class="ts" id="ts">EN ATTENTE DE DONNEES</div>
+  <div class="cur" id="cur"></div>
+</div>
+
+<div class="panel"><h2>CIBLES</h2><div id="list"></div></div>
+
+<div class="legend">
+  <i class="g"></i>OUVERT &nbsp; <i class="r"></i>FILTRE / COUPE &nbsp; <i class="a"></i>PROXY<br>
+  ping sequentiel par PING-LLM.bat
+</div>
+
+<button id="fsBtn" title="touche F">&#x26F6; PLEIN ECRAN</button>
+<button id="logoBtn" title="touche L">&#x25C9; AFFICHER LOGOS</button>
+<button id="mapBtn" title="touche M">&#x1F5FA; PLANISPHERE</button>
+
+<div class="wait" id="wait">
+  <div>EN ATTENTE DE <b>results.js</b><br>
+  lancer <b>PING-LLM.bat</b> dans le meme dossier</div>
+</div>
+
+<script src="https://unpkg.com/globe.gl"></script>
+<script>
+/* ==========================================================
+   CONFIGURATION
+   HOME  : point de depart des pings (Suisse).
+   SITES : "name" doit correspondre EXACTEMENT au PING-LLM.bat.
+   NB : les positions des sites d'une meme region sont
+   volontairement ecartees de quelques degres pour rester
+   lisibles a l'echelle du globe.
+   ========================================================== */
+const HOME = { name: "SUISSE", lat: 46.948, lng: 7.447 };
+
+const SITES = [
+  // cote ouest US -- eventail autour de la baie de SF
+  { name: "CHATGPT",           lat: 37.8,  lng: -122.4 },
+  { name: "CLAUDE",            lat: 41.0,  lng: -124.5 },
+  { name: "PERPLEXITY",        lat: 34.6,  lng: -120.8 },
+  { name: "GEMINI",            lat: 36.6,  lng: -117.6 },
+  { name: "META AI",           lat: 33.4,  lng: -115.8 },
+  { name: "GROK",              lat: 39.6,  lng: -119.4 },
+  { name: "COPILOT",           lat: 47.7,  lng: -122.1 },
+  { name: "COPILOT (GITHUB)",  lat: 44.5,  lng: -119.5 },
+  // Europe
+  { name: "LE CHAT (MISTRAL)", lat: 48.85, lng: 2.35 },
+  { name: "LUMO (PROTON)",     lat: 44.9,  lng: 4.6 },   // Geneve, ecarte au sud-ouest
+  { name: "EURIA (INFOMANIAK)",lat: 47.6,  lng: 9.8 },   // Geneve, ecarte au nord-est
+  // Chine -- ecartes autour de leurs villes reelles
+  { name: "KIMI",              lat: 39.9,  lng: 116.4 },
+  { name: "MIMO (XIAOMI)",     lat: 43.0,  lng: 112.5 },
+  { name: "MINIMAX",           lat: 31.2,  lng: 122.8 },
+  { name: "DEEPSEEK",          lat: 27.3,  lng: 117.0 },
+  { name: "QWEN (ALIBABA)",    lat: 30.3,  lng: 120.2 },
+];
+
+const COLORS = { OK: "#19e68c", FILT: "#ff3355", DOWN: "#ff3355", WARN: "#ffb020", UNKNOWN: "#5a7a8a" };
+const STATE_LABEL = { OK: "OUVERT", FILT: "FILTRE", DOWN: "COUPE", WARN: "PROXY", UNKNOWN: "..." };
+
+/* Monogrammes + couleur associee a chaque marque (pas les logos
+   officiels : simple badge colore avec 1-3 lettres). */
+const BRANDS = {
+  "CHATGPT":             { ab: "GPT", color: "#10a37f" },
+  "GEMINI":               { ab: "G",   color: "#4285f4" },
+  "CLAUDE":               { ab: "C",   color: "#d97757" },
+  "META AI":              { ab: "M",   color: "#0668e1" },
+  "PERPLEXITY":           { ab: "P",   color: "#20808d" },
+  "GROK":                 { ab: "X",   color: "#000000" },
+  "LE CHAT (MISTRAL)":    { ab: "M",   color: "#ff7000" },
+  "DEEPSEEK":             { ab: "DS",  color: "#4d6bfe" },
+  "KIMI":                 { ab: "K",   color: "#000000" },
+  "MINIMAX":              { ab: "MM",  color: "#7c3aed" },
+  "COPILOT":              { ab: "CP",  color: "#0067b8" },
+  "COPILOT (GITHUB)":     { ab: "GH",  color: "#6e40c9" },
+  "MIMO (XIAOMI)":        { ab: "Mi",  color: "#ff6900" },
+  "LUMO (PROTON)":        { ab: "L",   color: "#6d4aff" },
+  "EURIA (INFOMANIAK)":   { ab: "E",   color: "#2072d1" },
+  "QWEN (ALIBABA)":       { ab: "Q",   color: "#615ced" },
+};
+const POLL_MS = 1200;
+
+/* ========================================================== */
+const listEl = document.getElementById("list");
+const tsEl = document.getElementById("ts");
+const curEl = document.getElementById("cur");
+const waitEl = document.getElementById("wait");
+let states = {};
+let lastTs = null;
+let lastName = null;
+let world = null;
+let shotTimer = null;
+
+function stateOf(name){ return (states[name] && states[name].state) || "UNKNOWN"; }
+function colorOf(name){ return COLORS[stateOf(name)]; }
+function hexToRgba(hex, a){
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+
+if (typeof Globe === "undefined") {
+  waitEl.innerHTML = "<div>Impossible de charger la librairie 3D depuis unpkg.com<br>(CDN bloque par le reseau ?)</div>";
+} else {
+  world = Globe()(document.getElementById("globe"))
+    .globeImageUrl("https://unpkg.com/three-globe/example/img/earth-night.jpg")
+    .backgroundImageUrl("https://unpkg.com/three-globe/example/img/night-sky.png")
+    .atmosphereColor("#1c5f8a")
+    .atmosphereAltitude(0.18)
+    .pointOfView({ lat: 45, lng: -30, altitude: 2.1 })
+    .pointsData([HOME, ...SITES])
+    .pointLat("lat").pointLng("lng")
+    .pointColor(d => d === HOME ? "#39d0ff" : colorOf(d.name))
+    .pointAltitude(0.012)
+    .pointRadius(0.35)
+    .labelsData([HOME, ...SITES])
+    .labelLat("lat").labelLng("lng")
+    .labelText(d => d.name)
+    .labelSize(0.85)
+    .labelDotRadius(0)
+    .labelColor(d => d === HOME ? "#39d0ff" : hexToRgba(colorOf(d.name), 0.9))
+    .labelAltitude(0.015)
+    // badges "logo" (monogramme colore) -- vide tant que le mode n'est pas active
+    .htmlElementsData([])
+    .htmlLat("lat").htmlLng("lng")
+    .htmlAltitude(0.02)
+    .htmlElement(d => {
+      const el = document.createElement("div");
+      el.className = "badge";
+      const b = BRANDS[d.name] || { ab: d.name.slice(0, 2).toUpperCase(), color: "#5a7a8a" };
+      el.style.setProperty("--bg", b.color);
+      el.style.setProperty("--dot", colorOf(d.name));
+      el.title = d.name;
+      el.innerHTML = `<span class="ab">${b.ab}</span><span class="dot"></span>`;
+      return el;
+    })
+    .ringsData(SITES)
+    .ringLat("lat").ringLng("lng")
+    .ringColor(d => t => hexToRgba(colorOf(d.name), Math.max(0, 1 - t)))
+    .ringMaxRadius(3.4)
+    .ringPropagationSpeed(2.4)
+    .ringRepeatPeriod(d => stateOf(d.name) === "OK" ? 2600 : 1100)
+    .arcStartLat(() => HOME.lat).arcStartLng(() => HOME.lng)
+    .arcEndLat(d => d.lat).arcEndLng(d => d.lng)
+    // fil permanent : trait plein tres fin, a peine visible, colore par verdict
+    // tir en cours : grosse comete blanche vers la cible
+    .arcColor(d => d.shot
+        ? ["#ffffff", colorOf(d.name)]
+        : hexToRgba(colorOf(d.name), 0.28))
+    .arcAltitudeAutoScale(0.45)
+    .arcStroke(d => d.shot ? 1.5 : 0.12)
+    .arcDashLength(d => d.shot ? 0.22 : 1)
+    .arcDashGap(d => d.shot ? 1.6 : 0)
+    .arcDashInitialGap(d => d.shot ? 1 : 0)
+    .arcDashAnimateTime(d => d.shot ? 900 : 0);
+
+  world.controls().autoRotate = true;
+  world.controls().autoRotateSpeed = 0.35;
+  window.addEventListener("resize", () => world.width(innerWidth).height(innerHeight));
+}
+
+/* -- plein ecran --------------------------------------------- */
+const fsBtn = document.getElementById("fsBtn");
+function toggleFs(){
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen();
+}
+fsBtn.addEventListener("click", toggleFs);
+document.addEventListener("keydown", e => { if (e.key === "f" || e.key === "F") toggleFs(); });
+document.addEventListener("fullscreenchange", () => {
+  fsBtn.innerHTML = document.fullscreenElement ? "&#x26F6; QUITTER" : "&#x26F6; PLEIN ECRAN";
+  if (world) world.width(innerWidth).height(innerHeight);
+});
+
+/* -- bascule noms / logos -------------------------------------- */
+const logoBtn = document.getElementById("logoBtn");
+let showLogos = false;
+
+function applyDisplayMode(){
+  if (!world) return;
+  world.labelsData(showLogos ? [HOME] : [HOME, ...SITES]);
+  world.htmlElementsData(showLogos ? [...SITES] : []);
+}
+function toggleLogos(){
+  showLogos = !showLogos;
+  logoBtn.innerHTML = showLogos ? "&#x25C9; AFFICHER NOMS" : "&#x25C9; AFFICHER LOGOS";
+  applyDisplayMode();
+}
+logoBtn.addEventListener("click", toggleLogos);
+document.addEventListener("keydown", e => { if (e.key === "l" || e.key === "L") toggleLogos(); });
+
+/* -- panneau lateral ------------------------------------------ */
+function renderList(){
+  listEl.innerHTML = SITES.map(s => {
+    const st = stateOf(s.name);
+    const cls = { OK:"ok", FILT:"ko", DOWN:"ko", WARN:"warn", UNKNOWN:"off" }[st];
+    const live = s.name === lastName ? " live" : "";
+    const info = states[s.name] && st === "OK" ? states[s.name].t + "s" : "";
+    return `<div class="prow ${cls}${live}"><span class="dot"></span>
+      <span class="n">${s.name}</span>
+      <span class="s">${STATE_LABEL[st]} ${info}</span></div>`;
+  }).join("");
+}
+
+/* -- tir vers le site en cours de test ------------------------
+   Fils fins : uniquement les sites deja testes au moins 1 fois.
+   Gros trait : un seul, celui du test en cours, remplace par
+   le suivant au ping d'apres. */
+function tested(){ return SITES.filter(s => stateOf(s.name) !== "UNKNOWN"); }
+
+function fireShot(name){
+  if (!world) return;
+  const site = SITES.find(s => s.name === name);
+  world.arcsData(site ? [...tested(), { ...site, shot: true }] : [...tested()]);
+}
+
+/* ============================================================
+   MODE PLANISPHERE 2D  (canvas, projection equirectangulaire)
+   S'adapte a n'importe quelle taille d'ecran : lat/lng -> x/y
+   proportionnel a la surface disponible.
+   ============================================================ */
+const flat = document.getElementById("flat");
+const ctx = flat.getContext("2d");
+const mapBtn = document.getElementById("mapBtn");
+let flatMode = false;
+let dpr = 1, W = 0, H = 0;
+let animT = 0;
+
+// vue : zoom + deplacement
+const view = { scale: 1, ox: 0, oy: 0 };
+const MIN_SCALE = 1, MAX_SCALE = 12;
+
+// vraie texture equirectangulaire de la Terre (meme source que le globe)
+const earthImg = new Image();
+earthImg.crossOrigin = "anonymous";
+let earthReady = false;
+earthImg.onload = () => { earthReady = true; };
+earthImg.src = "https://unpkg.com/three-globe/example/img/earth-night.jpg";
+
+// projection de base (carte pleine) puis application du zoom/pan
+function baseX(lng){ return (lng + 180) / 360 * W; }
+function baseY(lat){ return (90 - lat) / 180 * H; }
+function projX(lng){ return baseX(lng) * view.scale + view.ox; }
+function projY(lat){ return baseY(lat) * view.scale + view.oy; }
+
+function clampView(){
+  view.scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, view.scale));
+  const maxOx = 0, minOx = W - W * view.scale;
+  const maxOy = 0, minOy = H - H * view.scale;
+  view.ox = Math.max(minOx, Math.min(maxOx, view.ox));
+  view.oy = Math.max(minOy, Math.min(maxOy, view.oy));
+}
+
+function resizeFlat(){
+  dpr = window.devicePixelRatio || 1;
+  W = innerWidth; H = innerHeight;
+  flat.width = W * dpr; flat.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  clampView();
+}
+window.addEventListener("resize", () => { if (flatMode) resizeFlat(); });
+
+function drawFlat(){
+  if (!flatMode) return;
+  animT += 0.016;
+  ctx.clearRect(0, 0, W, H);
+
+  // fond : la vraie carte de la Terre, avec zoom/pan
+  if (earthReady){
+    ctx.drawImage(earthImg, view.ox, view.oy, W * view.scale, H * view.scale);
+    // voile sombre pour faire ressortir les traits
+    ctx.fillStyle = "rgba(2,10,16,.35)";
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    ctx.fillStyle = "#04121a";
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "rgba(57,208,255,.5)";
+    ctx.font = "12px ui-monospace,monospace"; ctx.textAlign = "center";
+    ctx.fillText("chargement de la carte...", W/2, H/2);
+  }
+
+  // grille lat/lng discrete (suit le zoom)
+  ctx.strokeStyle = "rgba(57,208,255,.08)"; ctx.lineWidth = 1;
+  for (let lng = -150; lng <= 150; lng += 30){
+    const x = projX(lng);
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let lat = -60; lat <= 60; lat += 30){
+    const y = projY(lat);
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  const hx = projX(HOME.lng), hy = projY(HOME.lat);
+
+  // fils permanents (sites deja testes)
+  tested().forEach(s => {
+    drawArc2D(hx, hy, projX(s.lng), projY(s.lat), hexToRgba(colorOf(s.name), 0.25), 1, false);
+  });
+
+  // gros trait anime vers la cible en cours
+  const live = SITES.find(s => s.name === lastName);
+  if (live){
+    drawArc2D(hx, hy, projX(live.lng), projY(live.lat), colorOf(live.name), 2.5, true);
+  }
+
+  // points + etiquettes / badges
+  SITES.forEach(s => drawNode2D(s));
+
+  // point HOME
+  ctx.fillStyle = "#39d0ff";
+  ctx.beginPath(); ctx.arc(hx, hy, 5, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(57,208,255,.5)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(hx, hy, 5 + (animT * 20 % 18), 0, 7); ctx.stroke();
+  ctx.fillStyle = "#39d0ff"; ctx.font = "700 11px ui-monospace,monospace";
+  ctx.textAlign = "center"; ctx.fillText(HOME.name, hx, hy - 12);
+
+  requestAnimationFrame(drawFlat);
+}
+
+function drawArc2D(x1, y1, x2, y2, color, width, animated){
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2 - Math.hypot(x2 - x1, y2 - y1) * 0.22;
+  ctx.strokeStyle = color; ctx.lineWidth = width;
+  if (animated){
+    ctx.setLineDash([10, 14]);
+    ctx.lineDashOffset = -animT * 90;
+    ctx.shadowColor = color; ctx.shadowBlur = 10;
+  } else {
+    ctx.setLineDash([]); ctx.shadowBlur = 0;
+  }
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke();
+  ctx.setLineDash([]); ctx.shadowBlur = 0;
+
+  if (animated){
+    // tete de comete qui progresse le long de l'arc
+    const p = (animT * 0.5) % 1;
+    const bx = (1-p)*(1-p)*x1 + 2*(1-p)*p*mx + p*p*x2;
+    const by = (1-p)*(1-p)*y1 + 2*(1-p)*p*my + p*p*y2;
+    ctx.fillStyle = "#fff"; ctx.shadowColor = color; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(bx, by, 3, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+  }
+}
+
+function drawNode2D(s){
+  const x = projX(s.lng), y = projY(s.lat);
+  const col = colorOf(s.name);
+  const isLive = s.name === lastName;
+
+  // anneau d'impact pour le site en cours
+  if (isLive){
+    const r = 6 + (animT * 30 % 22);
+    ctx.strokeStyle = hexToRgba(col, Math.max(0, 1 - (r - 6) / 22));
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
+  }
+
+  if (showLogos){
+    const b = BRANDS[s.name] || { ab: s.name.slice(0,2).toUpperCase(), color: "#5a7a8a" };
+    ctx.fillStyle = b.color;
+    ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.stroke();
+    ctx.fillStyle = "#fff"; ctx.font = "700 9px ui-monospace,monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(b.ab, x, y + 0.5);
+    ctx.textBaseline = "alphabetic";
+    // point de statut
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + 8, y + 8, 4, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#04141b"; ctx.lineWidth = 1.5; ctx.stroke();
+  } else {
+    ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = hexToRgba(col, 0.95);
+    ctx.font = "600 10px ui-monospace,monospace"; ctx.textAlign = "center";
+    ctx.fillText(s.name, x, y - 9);
+  }
+}
+
+function toggleMap(){
+  flatMode = !flatMode;
+  mapBtn.innerHTML = flatMode ? "&#x1F30D; GLOBE 3D" : "&#x1F5FA; PLANISPHERE";
+  document.getElementById("globe").classList.toggle("hidden", flatMode);
+  flat.classList.toggle("hidden", !flatMode);
+  if (flatMode){ resizeFlat(); clampView(); drawFlat(); }
+}
+mapBtn.addEventListener("click", toggleMap);
+document.addEventListener("keydown", e => { if (e.key === "m" || e.key === "M") toggleMap(); });
+
+/* -- zoom (molette) + deplacement (glisser) sur le planisphere -- */
+flat.addEventListener("wheel", e => {
+  e.preventDefault();
+  const rect = flat.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  // point carte sous le curseur avant zoom
+  const wx = (mx - view.ox) / view.scale, wy = (my - view.oy) / view.scale;
+  const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+  view.scale *= factor;
+  clampView();
+  // recale l'offset pour zoomer sous le curseur
+  view.ox = mx - wx * view.scale;
+  view.oy = my - wy * view.scale;
+  clampView();
+}, { passive: false });
+
+let dragging = false, dragX = 0, dragY = 0;
+flat.addEventListener("pointerdown", e => {
+  dragging = true; dragX = e.clientX; dragY = e.clientY;
+  flat.setPointerCapture(e.pointerId);
+  flat.style.cursor = "grabbing";
+});
+flat.addEventListener("pointermove", e => {
+  if (!dragging) return;
+  view.ox += e.clientX - dragX;
+  view.oy += e.clientY - dragY;
+  dragX = e.clientX; dragY = e.clientY;
+  clampView();
+});
+function endDrag(){ dragging = false; flat.style.cursor = "grab"; }
+flat.addEventListener("pointerup", endDrag);
+flat.addEventListener("pointercancel", endDrag);
+flat.style.cursor = "grab";
+
+// double-clic : reset du zoom
+flat.addEventListener("dblclick", () => {
+  view.scale = 1; view.ox = 0; view.oy = 0;
+});
+
+/* -- lecture de results.js ------------------------------------ */
+function applyResults(data){
+  states = {};
+  data.sites.forEach(s => { states[s.name] = s; });
+  lastName = data.last || null;
+  tsEl.innerHTML = "DERNIER PING : <b>" + data.ts + "</b>";
+  curEl.innerHTML = lastName ? "cible : <b>" + lastName + "</b>" : "";
+  waitEl.classList.add("hidden");
+  renderList();
+  if (world){
+    world.pointsData([HOME, ...SITES]);
+    world.labelsData(showLogos ? [HOME] : [HOME, ...SITES]);
+    world.htmlElementsData(showLogos ? [...SITES] : []); // reference neuve -> redessine les points de statut
+    world.ringsData(SITES);
+    fireShot(lastName);
+  }
+}
+
+function poll(){
+  const s = document.createElement("script");
+  s.src = "results.js?t=" + Date.now();
+  s.onload = () => {
+    s.remove();
+    const d = window.LLM_RESULTS;
+    // garde-fou : ignore un fichier vide / incomplet (lecture pendant ecriture)
+    if (d && Array.isArray(d.sites) && d.sites.length > 0
+        && (d.ts !== lastTs || d.last !== lastName)){
+      lastTs = d.ts;
+      applyResults(d);
+    }
+  };
+  s.onerror = () => s.remove();
+  document.body.appendChild(s);
+}
+
+renderList();
+poll();
+setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>

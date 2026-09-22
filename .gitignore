@@ -1,0 +1,12 @@
+# artefact genere par l'outil local (PING-LLM.bat)
+Local Test/results.js
+
+# outils
+node_modules/
+.vercel/
+.env*
+
+# systeme
+Thumbs.db
+desktop.ini
+.DS_Store

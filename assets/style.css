@@ -1,0 +1,172 @@
+/* ==========================================================
+   Habillage repris de la version locale (carte-llm.html) :
+   fond noir, cyan, monospace. Ajouts pour le web : barre de
+   commande, niveaux de confiance, tiroir mobile.
+   ========================================================== */
+:root{
+  --ok:#19e68c; --ko:#ff3355; --warn:#ffb020; --off:#5a7a8a;
+  --cyan:#39d0ff; --ink:#cfe6ee; --dim:#5f7f8c;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",monospace;
+  --panel-bg:rgba(4,14,20,.82);
+  --panel-br:rgba(57,208,255,.25);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#000;color:var(--ink);font-family:var(--mono)}
+body{-webkit-tap-highlight-color:transparent}
+#globe{position:absolute;inset:0}
+canvas#flat{position:absolute;inset:0;z-index:1;width:100%;height:100%;touch-action:none}
+.hidden{display:none !important}
+
+/* ---------- bandeau titre ---------- */
+.hud{position:absolute;z-index:10;pointer-events:none}
+.hud.tl{top:20px;left:24px;max-width:min(52vw,420px)}
+.hud.tl h1{font-size:1rem;letter-spacing:.3em;color:var(--cyan);text-shadow:0 0 12px rgba(57,208,255,.6)}
+.hud.tl .sub{font-size:.66rem;color:var(--dim);letter-spacing:.14em;margin-top:4px;line-height:1.6}
+.hud.tl .ts{font-size:.68rem;color:var(--ink);margin-top:10px}
+.hud.tl .ts b{color:var(--cyan)}
+.hud.tl .cur{font-size:.68rem;margin-top:4px;color:var(--dim)}
+.hud.tl .cur b{color:#fff}
+
+/* ---------- score global ---------- */
+.score{
+  position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:18px;background:var(--panel-bg);border:1px solid var(--panel-br);
+  border-radius:6px;padding:9px 20px;backdrop-filter:blur(4px);pointer-events:none;
+}
+.score div{text-align:center;min-width:52px}
+.score .v{font-size:1.15rem;font-weight:700;line-height:1.1}
+.score .k{font-size:.55rem;letter-spacing:.16em;color:var(--dim);margin-top:3px}
+.score .o .v{color:var(--ok)} .score .f .v{color:var(--ko)}
+.score .b .v{color:var(--ko)} .score .u .v{color:var(--off)}
+
+/* ---------- panneau des cibles ---------- */
+.panel{
+  position:absolute;top:20px;right:24px;z-index:10;width:300px;
+  max-height:calc(100vh - 110px);display:flex;flex-direction:column;
+  background:var(--panel-bg);border:1px solid var(--panel-br);
+  border-radius:6px;padding:13px 14px;backdrop-filter:blur(4px);
+  box-shadow:0 0 24px rgba(57,208,255,.08);
+}
+.panel h2{font-size:.64rem;letter-spacing:.24em;color:var(--cyan);margin-bottom:9px;flex:none}
+.rows{overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(57,208,255,.3) transparent}
+.rows::-webkit-scrollbar{width:5px}
+.rows::-webkit-scrollbar-thumb{background:rgba(57,208,255,.3);border-radius:3px}
+
+.prow{
+  display:flex;align-items:center;gap:8px;font-size:.71rem;
+  padding:4px 6px;border-radius:4px;cursor:default;
+}
+.prow.live{background:rgba(57,208,255,.12)}
+.prow:hover{background:rgba(57,208,255,.06)}
+.prow .dot{width:7px;height:7px;border-radius:50%;flex:none}
+.prow .n{flex:1;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .s{font-size:.6rem;letter-spacing:.09em;flex:none}
+.prow .c{font-size:.52rem;color:var(--dim);flex:none;width:12px;text-align:right}
+.prow.ok   .dot{background:var(--ok);box-shadow:0 0 8px var(--ok)}     .prow.ok .s{color:var(--ok)}
+.prow.ko   .dot{background:var(--ko);box-shadow:0 0 8px var(--ko)}     .prow.ko .s{color:var(--ko)}
+.prow.warn .dot{background:var(--warn);box-shadow:0 0 8px var(--warn)} .prow.warn .s{color:var(--warn)}
+.prow.off  .dot{background:var(--off)}                                  .prow.off .s{color:var(--off)}
+.prow.test .dot{background:var(--cyan);animation:pulse .8s infinite}    .prow.test .s{color:var(--cyan)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+.panel .foot{
+  flex:none;margin-top:10px;padding-top:9px;border-top:1px solid rgba(57,208,255,.15);
+  font-size:.58rem;color:var(--dim);line-height:1.8;letter-spacing:.06em;
+}
+.panel .foot b{color:var(--cyan)}
+
+/* ---------- detail au survol ---------- */
+.tip{
+  position:fixed;z-index:40;max-width:310px;pointer-events:none;
+  background:rgba(2,10,15,.96);border:1px solid var(--panel-br);border-radius:5px;
+  padding:9px 11px;font-size:.64rem;line-height:1.75;color:var(--ink);
+  box-shadow:0 6px 28px rgba(0,0,0,.7);
+}
+.tip .t{color:var(--cyan);letter-spacing:.14em;margin-bottom:5px;font-size:.6rem}
+.tip .w{color:var(--dim)}
+.tip .kv{display:flex;justify-content:space-between;gap:14px}
+.tip .kv span:first-child{color:var(--dim)}
+
+/* ---------- legende ---------- */
+.legend{
+  position:absolute;bottom:18px;left:24px;z-index:10;font-size:.62rem;
+  color:var(--dim);letter-spacing:.09em;line-height:1.95;max-width:44vw;
+}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.legend .g{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+.legend .r{background:var(--ko);box-shadow:0 0 6px var(--ko)}
+.legend .a{background:var(--off)}
+.legend a{color:var(--cyan);text-decoration:none;border-bottom:1px dotted rgba(57,208,255,.4)}
+
+/* ---------- boutons ---------- */
+.bar{position:absolute;bottom:16px;right:24px;z-index:10;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.btn{
+  font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;
+  color:var(--cyan);background:var(--panel-bg);
+  border:1px solid rgba(57,208,255,.35);border-radius:6px;
+  padding:9px 14px;cursor:pointer;white-space:nowrap;
+}
+.btn:hover{background:rgba(57,208,255,.12)}
+.btn:active{transform:translateY(1px)}
+.btn.go{color:#04141b;background:var(--cyan);border-color:var(--cyan);font-weight:700}
+.btn.go:hover{background:#6fdfff}
+.btn.stop{color:var(--warn);border-color:rgba(255,176,32,.5)}
+
+/* ---------- badge de marque sur le globe ---------- */
+.badge{
+  width:30px;height:30px;border-radius:50%;position:relative;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid rgba(255,255,255,.85);
+  box-shadow:0 0 10px rgba(0,0,0,.5);
+  transform:translate(-50%,-50%);background:var(--bg);
+}
+.badge .ab{color:#fff;font-family:var(--mono);font-weight:700;font-size:.6rem;pointer-events:none}
+.badge .sd{position:absolute;right:-2px;bottom:-2px;width:10px;height:10px;border-radius:50%;background:var(--dot);border:2px solid #04141b}
+
+/* ---------- ecran d'accueil ---------- */
+.intro{
+  position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.78);backdrop-filter:blur(3px);padding:24px;overflow-y:auto;
+}
+.intro .box{
+  max-width:620px;width:100%;background:rgba(4,14,20,.94);
+  border:1px solid var(--panel-br);border-radius:8px;padding:28px 30px;
+  box-shadow:0 0 50px rgba(57,208,255,.1);
+}
+.intro h2{font-size:.9rem;letter-spacing:.24em;color:var(--cyan);margin-bottom:14px}
+.intro p{font-size:.74rem;line-height:1.95;color:var(--ink);margin-bottom:12px}
+.intro p.d{color:var(--dim);font-size:.68rem}
+.intro ul{margin:0 0 14px 16px;font-size:.7rem;line-height:1.95;color:var(--dim)}
+.intro ul b{color:var(--ink);font-weight:400}
+.intro .note{
+  border-left:2px solid rgba(255,176,32,.5);padding:8px 0 8px 12px;margin-bottom:16px;
+  font-size:.66rem;line-height:1.85;color:var(--dim);
+}
+.intro .note b{color:var(--warn);font-weight:400}
+.intro .go{display:block;width:100%;padding:13px;font-size:.76rem;letter-spacing:.2em}
+
+/* ---------- tiroir mobile ---------- */
+#drawerBtn{display:none}
+
+@media (max-width:860px){
+  .hud.tl{top:14px;left:16px;max-width:calc(100vw - 32px)}
+  .hud.tl h1{font-size:.86rem;letter-spacing:.22em}
+  .hud.tl .sub{font-size:.58rem}
+  .score{top:auto;bottom:74px;gap:10px;padding:7px 12px;width:calc(100vw - 32px);justify-content:space-around}
+  .score .v{font-size:.98rem} .score .k{font-size:.5rem;letter-spacing:.1em}
+
+  .panel{
+    top:auto;bottom:0;left:0;right:0;width:100%;max-height:62vh;
+    border-radius:10px 10px 0 0;border-bottom:none;
+    transform:translateY(100%);transition:transform .25s ease;
+  }
+  .panel.open{transform:translateY(0)}
+
+  .legend{display:none}
+  .bar{bottom:14px;left:16px;right:16px;justify-content:space-between;gap:6px}
+  .btn{padding:10px 11px;font-size:.6rem;letter-spacing:.09em;flex:1;text-align:center}
+  #drawerBtn{display:block}
+  .intro .box{padding:22px 20px}
+  .intro p{font-size:.72rem}
+  .tip{display:none}
+}
