@@ -4,8 +4,8 @@ Un site qui teste, **depuis votre propre navigateur**, quels services d'IA gén�
 sont accessibles ou bloqués par le réseau que vous utilisez : entreprise, école,
 hôtspot public.
 
-Résultat affiché sur un globe 3D ou un planisphère, avec un relevé texte copiable
-à joindre à une demande au service informatique.
+Résultat affiché sur un globe 3D ou un planisphère, avec le détail de chaque verdict
+au survol.
 
 ---
 
@@ -77,25 +77,40 @@ C'est le canari, et non l'échec d'une image, qui autorise un verdict négatif.
 
 ### Calibration
 
-Trois domaines d'infrastructure neutres (Cloudflare, Wikipedia, Microsoft) donnent la
+Trois domaines d'infrastructure neutres (Cloudflare, Wikipedia, Wikimedia) donnent la
 **latence normale** du réseau. Une réponse nettement plus rapide que cette référence
 n'a pas eu le temps de traverser l'Atlantique : elle vient d'un équipement local.
 
+Leurs icônes ont été vérifiées chargeables depuis une autre page. Un témoin dont
+l'image ne peut pas se charger fausserait la calibration — c'était le cas de
+`c.s-microsoft.com/favicon.ico`, qui renvoie du HTML et non une image.
+
 ### Table de décision
 
-Pour un point d'accès, réseau honnête :
+Pour un point d'accès, réseau honnête. La présence d'une icône déclarée change tout :
+une icône n'est déclarée dans `targets.js` **que si elle a été vérifiée chargeable**,
+donc son échec est alors significatif.
 
-| Paquet sort | Image authentique | Délai | Verdict | Confiance |
-|---|---|---|---|---|
-| oui | oui | — | **Ouvert** | haute |
-| oui | non / non vérifiable | normal | **Ouvert** | moyenne |
-| oui | non | anormalement court | **Filtré** | moyenne |
-| non | oui | — | **Filtré** (par URL) | moyenne |
-| non | non | refus immédiat | **Coupé** | haute |
-| non | non | délai expiré | **Coupé** | haute |
+| Icône déclarée | Paquet sort | Image reçue | Délai | Verdict | Confiance |
+|---|---|---|---|---|---|
+| oui | oui | oui | — | **Ouvert** | haute |
+| oui | oui | non | normal | **Filtré** | moyenne |
+| oui | oui | non | anormalement court | **Filtré** | haute |
+| non | oui | — | normal | **Ouvert** | faible |
+| non | oui | — | anormalement court | **Filtré** | moyenne |
+| — | non | oui | — | **Filtré** (par URL) | moyenne |
+| — | non | non | refus immédiat | **Coupé** | haute |
+| — | non | non | délai expiré | **Coupé** | haute |
 
-Si un canari a répondu, la deuxième ligne bascule en **Filtré** : sur un réseau qui
+La quatrième ligne est la seule où l'on conclut à l'ouverture sans preuve de contenu :
+elle ne concerne que les sites qui interdisent la vérification, et sort en confiance
+**faible**. Si un canari a répondu, elle bascule en **Filtré** — sur un réseau qui
 répond à tout, aboutir ne veut plus rien dire.
+
+Une version intermédiaire appliquait cette clémence à *tous* les sites dont l'image
+échouait, y compris ceux dont l'icône était vérifiée. Résultat : tout ce que le réseau
+bloquait ressortait « ouvert », puisqu'un proxy accepte la connexion avant de servir sa
+page de blocage. Un test nommé `REGRESSION` verrouille ce cas.
 
 ### Plusieurs points d'accès par service
 
@@ -127,8 +142,7 @@ quand les uns passent et les autres non. Le détail au survol indique lesquels.
 
 Tout se passe dans l'onglet. Aucun serveur applicatif, aucune base de données, aucune
 mesure d'audience, aucun cookie envoyé aux sites testés (`credentials: "omit"`). Les
-résultats ne quittent jamais le navigateur ; le bouton **RELEVÉ** copie un texte que
-vous êtes seul à transmettre, si vous le souhaitez.
+résultats ne quittent jamais le navigateur et disparaissent avec l'onglet.
 
 ---
 
@@ -153,7 +167,6 @@ par un serveur.
 |---|---|
 | `Espace` | lancer / arrêter le test |
 | `M` | globe 3D ↔ planisphère |
-| `L` | noms ↔ badges de marque |
 | `F` | plein écran |
 
 Sur le planisphère : molette pour zoomer, glisser pour déplacer, double-clic pour
@@ -164,10 +177,10 @@ réinitialiser.
 ## Ajouter un service, ou un point d'accès
 
 Une seule entrée dans [`assets/targets.js`](assets/targets.js), tout le reste suit —
-globe, planisphère, panneau, relevé :
+globe, planisphère et panneau :
 
 ```js
-{ name: "NOUVELLE IA", lat: 37.8, lng: -122.4, ab: "NI", color: "#ff7000",
+{ name: "NOUVELLE IA", lat: 37.8, lng: -122.4,
   probes: [
     { label: "chat",  url: "https://exemple.ai", icon: "https://exemple.ai/favicon.ico" },
     { label: "agent", url: "https://agent.exemple.ai" },
@@ -192,7 +205,7 @@ index.html            page unique
 assets/
   targets.js          services testés, points d'accès, témoins, canaris
   probe.js            les trois sondes, la calibration, les verdicts
-  app.js              globe 3D, planisphère, panneau, relevé
+  app.js              globe 3D, planisphère, panneau
   style.css
   globe.gl.min.js     librairie 3D, servie en local et non depuis un CDN
   earth-night.jpg     textures du globe

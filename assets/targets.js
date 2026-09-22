@@ -24,20 +24,18 @@
              chargement de leurs images depuis ailleurs
              (en-tete Cross-Origin-Resource-Policy), l'absence
              de reponse n'est alors pas un signe de blocage.
-     ab      monogramme du badge (1 a 3 lettres)
-     color   couleur de la marque
    ========================================================== */
 
 const HOME = { name: "VOUS", lat: 46.948, lng: 7.447 };
 
 const TARGETS = [
   // --- cote ouest US : eventail autour de la baie de San Francisco
-  { name: "CHATGPT", lat: 37.8, lng: -122.4, ab: "GPT", color: "#10a37f",
+  { name: "CHATGPT", lat: 37.8, lng: -122.4,
     probes: [
       { label: "chat", url: "https://chatgpt.com", icon: "https://chatgpt.com/favicon.ico" },
     ] },
 
-  { name: "CLAUDE", lat: 41.0, lng: -124.5, ab: "C", color: "#d97757",
+  { name: "CLAUDE", lat: 41.0, lng: -124.5,
     probes: [
       // favicon volontairement absent : claude.ai renvoie
       // Cross-Origin-Resource-Policy: same-origin, l'image ne peut
@@ -46,66 +44,66 @@ const TARGETS = [
       { label: "app", url: "https://claude.ai" },
     ] },
 
-  { name: "PERPLEXITY", lat: 34.6, lng: -120.8, ab: "P", color: "#20808d",
+  { name: "PERPLEXITY", lat: 34.6, lng: -120.8,
     probes: [
       { label: "app", url: "https://www.perplexity.ai", icon: "https://www.perplexity.ai/favicon.ico" },
     ] },
 
-  { name: "GEMINI", lat: 36.6, lng: -117.6, ab: "G", color: "#4285f4",
+  { name: "GEMINI", lat: 36.6, lng: -117.6,
     probes: [
       { label: "app", url: "https://gemini.google.com",
         icon: "https://www.gstatic.com/lamda/images/favicon_v1_150160cddff7f294ce30.svg" },
     ] },
 
-  { name: "META AI", lat: 33.4, lng: -115.8, ab: "M", color: "#0668e1",
+  { name: "META AI", lat: 33.4, lng: -115.8,
     probes: [
       { label: "app", url: "https://www.meta.ai", icon: "https://www.meta.ai/favicon.ico" },
     ] },
 
-  { name: "GROK", lat: 39.6, lng: -119.4, ab: "X", color: "#1a1a1a",
+  { name: "GROK", lat: 39.6, lng: -119.4,
     probes: [
       { label: "app", url: "https://grok.com", icon: "https://grok.com/favicon.ico" },
     ] },
 
-  { name: "COPILOT", lat: 47.7, lng: -122.1, ab: "CP", color: "#0067b8",
+  { name: "COPILOT", lat: 47.7, lng: -122.1,
     probes: [
       { label: "app", url: "https://copilot.microsoft.com", icon: "https://copilot.microsoft.com/favicon.ico" },
     ] },
 
-  { name: "COPILOT (GITHUB)", lat: 44.5, lng: -119.5, ab: "GH", color: "#6e40c9",
+  { name: "COPILOT (GITHUB)", lat: 44.5, lng: -119.5,
     probes: [
       { label: "app", url: "https://github.com/copilot",
         icon: "https://github.githubassets.com/favicons/favicon.svg" },
     ] },
 
   // --- Europe
-  { name: "LE CHAT (MISTRAL)", lat: 48.85, lng: 2.35, ab: "M", color: "#ff7000",
+  { name: "LE CHAT (MISTRAL)", lat: 48.85, lng: 2.35,
     probes: [
       { label: "chat", url: "https://chat.mistral.ai", icon: "https://chat.mistral.ai/favicon.ico" },
     ] },
 
-  { name: "LUMO (PROTON)", lat: 44.9, lng: 4.6, ab: "L", color: "#6d4aff",   // Geneve, ecarte au sud-ouest
+  { name: "LUMO (PROTON)", lat: 44.9, lng: 4.6,   // Geneve, ecarte au sud-ouest
     probes: [
       { label: "app", url: "https://lumo.proton.me", icon: "https://lumo.proton.me/favicon.ico" },
     ] },
 
-  { name: "EURIA (INFOMANIAK)", lat: 47.6, lng: 9.8, ab: "E", color: "#2072d1",   // Geneve, ecarte au nord-est
+  { name: "EURIA (INFOMANIAK)", lat: 47.6, lng: 9.8,   // Geneve, ecarte au nord-est
     probes: [
       { label: "app", url: "https://euria.infomaniak.com", icon: "https://euria.infomaniak.com/favicon.ico" },
     ] },
 
   // --- Chine : ecartes autour de leurs villes reelles
-  { name: "KIMI", lat: 39.9, lng: 116.4, ab: "K", color: "#1a1a1a",
+  { name: "KIMI", lat: 39.9, lng: 116.4,
     probes: [
       { label: "chat", url: "https://www.kimi.com", icon: "https://www.kimi.com/favicon.ico" },
     ] },
 
-  { name: "MIMO (XIAOMI)", lat: 43.0, lng: 112.5, ab: "Mi", color: "#ff6900",
+  { name: "MIMO (XIAOMI)", lat: 43.0, lng: 112.5,
     probes: [
       { label: "app", url: "https://aistudio.xiaomimimo.com", icon: "https://aistudio.xiaomimimo.com/favicon.ico" },
     ] },
 
-  { name: "MINIMAX", lat: 31.2, lng: 122.8, ab: "MM", color: "#7c3aed",
+  { name: "MINIMAX", lat: 31.2, lng: 122.8,
     probes: [
       { label: "chat", url: "https://chat.minimax.io", icon: "https://chat.minimax.io/favicon.ico" },
       // le point qui manquait : la page s'ouvre, mais lancer un
@@ -113,12 +111,12 @@ const TARGETS = [
       { label: "agent", url: "https://agent.minimax.io", icon: "https://agent.minimax.io/favicon.ico" },
     ] },
 
-  { name: "DEEPSEEK", lat: 27.3, lng: 117.0, ab: "DS", color: "#4d6bfe",
+  { name: "DEEPSEEK", lat: 27.3, lng: 117.0,
     probes: [
       { label: "chat", url: "https://chat.deepseek.com", icon: "https://chat.deepseek.com/favicon.ico" },
     ] },
 
-  { name: "QWEN (ALIBABA)", lat: 30.3, lng: 120.2, ab: "Q", color: "#615ced",
+  { name: "QWEN (ALIBABA)", lat: 30.3, lng: 120.2,
     probes: [
       { label: "chat", url: "https://chat.qwen.ai", icon: "https://chat.qwen.ai/favicon.ico" },
     ] },

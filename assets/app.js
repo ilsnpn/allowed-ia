@@ -34,7 +34,6 @@ let snap = {
              UNKNOWN: TARGETS.length, total: TARGETS.length },
 };
 let world = null;
-let showLogos = false;
 
 function stateOf(name){
   const r = snap.results[name];
@@ -89,20 +88,6 @@ function initGlobe(){
     .labelColor(d => d === HOME ? "#39d0ff" : hexToRgba(colorOf(d.name), 0.9))
     .labelAltitude(0.015)
 
-    // badges de marque : vides tant que le mode logo n'est pas actif
-    .htmlElementsData([])
-    .htmlLat("lat").htmlLng("lng")
-    .htmlAltitude(0.02)
-    .htmlElement(d => {
-      const el = document.createElement("div");
-      el.className = "badge";
-      el.style.setProperty("--bg", d.color);
-      el.style.setProperty("--dot", colorOf(d.name));
-      el.title = d.name;
-      el.innerHTML = `<span class="ab">${d.ab}</span><span class="sd"></span>`;
-      return el;
-    })
-
     .ringsData(TARGETS)
     .ringLat("lat").ringLng("lng")
     .ringColor(d => t => hexToRgba(colorOf(d.name), Math.max(0, 1 - t)))
@@ -141,8 +126,7 @@ function fireShot(name){
 function refreshGlobe(){
   if (!world) return;
   world.pointsData([HOME, ...TARGETS]);
-  world.labelsData(showLogos ? [HOME] : [HOME, ...TARGETS]);
-  world.htmlElementsData(showLogos ? [...TARGETS] : []);  // reference neuve -> redessine les pastilles
+  world.labelsData([HOME, ...TARGETS]);
   world.ringsData(TARGETS);
 }
 
@@ -335,24 +319,11 @@ function drawNode2D(t){
     ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
   }
 
-  if (showLogos){
-    ctx.fillStyle = t.color;
-    ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 2; ctx.stroke();
-    ctx.fillStyle = "#fff"; ctx.font = "700 9px ui-monospace,monospace";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(t.ab, x, y + 0.5);
-    ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = col;
-    ctx.beginPath(); ctx.arc(x + 8, y + 8, 4, 0, 7); ctx.fill();
-    ctx.strokeStyle = "#04141b"; ctx.lineWidth = 1.5; ctx.stroke();
-  } else {
-    ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 8;
-    ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
-    ctx.fillStyle = hexToRgba(col, 0.95);
-    ctx.font = "600 10px ui-monospace,monospace"; ctx.textAlign = "center";
-    ctx.fillText(t.name, x, y - 9);
-  }
+  ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.fillStyle = hexToRgba(col, 0.95);
+  ctx.font = "600 10px ui-monospace,monospace"; ctx.textAlign = "center";
+  ctx.fillText(t.name, x, y - 9);
 }
 
 /* zoom molette + deplacement au doigt/souris */
@@ -413,22 +384,6 @@ $("howLink").addEventListener("click", e => {
   introEl.classList.remove("hidden");
 });
 
-/* releve texte, a coller dans un ticket au service informatique */
-$("copyBtn").addEventListener("click", async () => {
-  const txt = engine.report();
-  const btn = $("copyBtn");
-  try {
-    await navigator.clipboard.writeText(txt);
-    btn.innerHTML = "&#10003; COPIE";
-  } catch {
-    // navigateur qui refuse le presse-papiers : on ouvre le texte
-    const w = window.open("", "_blank");
-    if (w){ w.document.write("<pre>" + txt.replace(/</g, "&lt;") + "</pre>"); }
-    btn.innerHTML = "&#10003; OUVERT";
-  }
-  setTimeout(() => { btn.innerHTML = "&#128203; RELEVE"; }, 1800);
-});
-
 function toggleFs(){
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen().catch(() => {});
@@ -438,13 +393,6 @@ document.addEventListener("fullscreenchange", () => {
   $("fsBtn").innerHTML = document.fullscreenElement ? "&#x26F6; QUITTER" : "&#x26F6; PLEIN ECRAN";
   if (world) world.width(innerWidth).height(innerHeight);
 });
-
-function toggleLogos(){
-  showLogos = !showLogos;
-  $("logoBtn").innerHTML = showLogos ? "&#x25C9; NOMS" : "&#x25C9; LOGOS";
-  refreshGlobe();
-}
-$("logoBtn").addEventListener("click", toggleLogos);
 
 function toggleMap(){
   flatMode = !flatMode;
@@ -461,7 +409,6 @@ document.addEventListener("keydown", e => {
   if (e.target.tagName === "INPUT") return;
   const k = e.key.toLowerCase();
   if (k === "f") toggleFs();
-  if (k === "l") toggleLogos();
   if (k === "m") toggleMap();
   if (k === " "){ e.preventDefault(); toggleRun(); }
 });

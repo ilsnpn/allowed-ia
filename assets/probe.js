@@ -394,46 +394,4 @@ class ProbeEngine {
     this.running = false;
     this.current = null;
   }
-
-  /* Releve texte, a joindre a une demande au service informatique. */
-  report() {
-    const lines = [];
-    this.targets.forEach(t => {
-      const r = this.results[t.name];
-      if (!r || r.state === STATE.TESTING) { lines.push(`${t.name}\tnon teste`); return; }
-      lines.push([t.name, LABEL[r.state], r.confidence, r.ms + " ms"].join("\t"));
-      if (r.probes && r.probes.length > 1) {
-        r.probes.forEach(p => lines.push(`  ${p.label}\t${LABEL[p.state]}\t${p.ms} ms\t${p.url}`));
-      } else if (r.probes) {
-        lines.push(`  \t\t\t${r.probes[0].url}`);
-      }
-    });
-
-    const s = this.summary();
-    return [
-      "Test d'acces aux services d'IA generative",
-      "Date : " + new Date().toLocaleString("fr-FR"),
-      "",
-      "Conditions de mesure",
-      "  latence de reference du reseau : " + Math.round(this.baselineMs) + " ms",
-      "  verification du contenu : " + (this.contentTrusted ? "active" : "indisponible"),
-      "  reponses aux domaines inexistants : " +
-        (this.networkHonest ? "aucune (reseau honnete)" : "OUI -- un equipement repond a tout"),
-      "",
-      `Ouverts ${s.OPEN} / Partiels ${s.PARTIAL} / Filtres ${s.FILTERED} / Coupes ${s.BLOCKED} sur ${s.total}`,
-      "",
-      "SERVICE\tVERDICT\tCONFIANCE\tDELAI",
-      ...lines,
-      "",
-      "Mesure effectuee depuis un navigateur, sans lecture du contenu des",
-      "reponses (regle CORS). Un verdict 'filtre' ou 'coupe' indique que le",
-      "reseau emprunte empeche l'acces ; il ne prejuge pas d'une panne du",
-      "service lui-meme.",
-    ].join("\n");
-  }
 }
-
-const LABEL = {
-  OPEN: "OUVERT", PARTIAL: "PARTIEL", FILTERED: "FILTRE", BLOCKED: "COUPE",
-  TESTING: "TEST...", UNKNOWN: "-",
-};

@@ -119,17 +119,6 @@ canvas#flat{position:absolute;inset:0;z-index:1;width:100%;height:100%;touch-act
 .btn.go:hover{background:#6fdfff}
 .btn.stop{color:var(--warn);border-color:rgba(255,176,32,.5)}
 
-/* ---------- badge de marque sur le globe ---------- */
-.badge{
-  width:30px;height:30px;border-radius:50%;position:relative;
-  display:flex;align-items:center;justify-content:center;
-  border:2px solid rgba(255,255,255,.85);
-  box-shadow:0 0 10px rgba(0,0,0,.5);
-  transform:translate(-50%,-50%);background:var(--bg);
-}
-.badge .ab{color:#fff;font-family:var(--mono);font-weight:700;font-size:.6rem;pointer-events:none}
-.badge .sd{position:absolute;right:-2px;bottom:-2px;width:10px;height:10px;border-radius:50%;background:var(--dot);border:2px solid #04141b}
-
 /* ---------- ecran d'accueil ---------- */
 .intro{
   position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
