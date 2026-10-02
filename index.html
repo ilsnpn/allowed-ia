@@ -45,14 +45,16 @@
 <div class="bar">
   <button class="btn go" id="runBtn">&#9655; LANCER LE TEST</button>
   <button class="btn" id="drawerBtn">&#9776; LISTE</button>
+  <button class="btn" id="infoBtn" title="touche I">&#9432; INFOS</button>
   <button class="btn" id="mapBtn" title="touche M">&#x1F5FA; PLANISPHERE</button>
   <button class="btn" id="fsBtn" title="touche F">&#x26F6; PLEIN ECRAN</button>
 </div>
 
-<!-- ecran d'accueil -->
-<div class="intro" id="intro">
-  <div class="box">
-    <h2>ACCES IA</h2>
+<!-- fenetre d'explication, ouverte par le bouton INFOS -->
+<div class="intro hidden" id="intro">
+  <div class="box" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+    <button class="close" id="closeX" aria-label="Fermer">&times;</button>
+    <h2 id="introTitle">ACCES IA</h2>
     <p>Cette page verifie, <b>depuis votre propre navigateur</b>, lesquels des principaux
        services d'IA generative sont joignables sur le reseau que vous utilisez en ce moment.
        Utile pour savoir ce que filtre un reseau d'entreprise, une ecole ou un hotspot public.</p>
@@ -73,7 +75,8 @@
        <b>partiel</b>, avec le detail au survol.</p>
 
     <div class="note">
-      <b>A savoir avant de lancer.</b>
+      <b>A savoir.</b>
+      Le test demarre automatiquement a l'ouverture de la page.
       Le navigateur interdit de lire le contenu d'un autre site : le verdict repose sur des
       indices croises, pas sur la lecture de la page de blocage. Chaque ligne affiche donc
       son niveau de confiance.<br>
@@ -84,7 +87,7 @@
     <p class="d">Aucun compte, aucun cookie envoye aux cibles, aucune donnee transmise
        ailleurs : tout reste dans cet onglet.</p>
 
-    <button class="btn go" id="startBtn">&#9655; LANCER LE TEST</button>
+    <button class="btn go" id="closeBtn">FERMER</button>
   </div>
 </div>
 

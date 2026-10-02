@@ -362,7 +362,6 @@ flat.addEventListener("dblclick", () => { view.scale = 1; view.ox = 0; view.oy =
 const runBtn = $("runBtn");
 
 async function startTest(){
-  introEl.classList.add("hidden");
   scoreEl.classList.remove("hidden");
   runBtn.innerHTML = "&#9633; ARRETER";
   runBtn.classList.remove("go");
@@ -377,12 +376,18 @@ function toggleRun(){
   if (engine.running){ engine.stop(); } else { startTest(); }
 }
 runBtn.addEventListener("click", toggleRun);
-$("startBtn").addEventListener("click", startTest);
 
-$("howLink").addEventListener("click", e => {
-  e.preventDefault();
-  introEl.classList.remove("hidden");
-});
+/* fenetre d'explication : bouton INFOS, lien de la legende ou touche I */
+function openInfo(){ introEl.classList.remove("hidden"); $("closeBtn").focus(); }
+function closeInfo(){ introEl.classList.add("hidden"); }
+function infoOpen(){ return !introEl.classList.contains("hidden"); }
+
+$("infoBtn").addEventListener("click", () => infoOpen() ? closeInfo() : openInfo());
+$("howLink").addEventListener("click", e => { e.preventDefault(); openInfo(); });
+$("closeBtn").addEventListener("click", closeInfo);
+$("closeX").addEventListener("click", closeInfo);
+// clic sur le fond assombri, hors de la boite
+introEl.addEventListener("click", e => { if (e.target === introEl) closeInfo(); });
 
 function toggleFs(){
   if (document.fullscreenElement) document.exitFullscreen();
@@ -408,6 +413,9 @@ $("drawerBtn").addEventListener("click", () => panelEl.classList.toggle("open"))
 document.addEventListener("keydown", e => {
   if (e.target.tagName === "INPUT") return;
   const k = e.key.toLowerCase();
+  if (k === "escape" && infoOpen()){ closeInfo(); return; }
+  if (k === "i"){ infoOpen() ? closeInfo() : openInfo(); return; }
+  if (infoOpen()) return;   // fenetre ouverte : pas de raccourci en arriere-plan
   if (k === "f") toggleFs();
   if (k === "m") toggleMap();
   if (k === " "){ e.preventDefault(); toggleRun(); }
@@ -416,3 +424,4 @@ document.addEventListener("keydown", e => {
 /* ---------- demarrage ---------- */
 initGlobe();
 render();
+startTest();
