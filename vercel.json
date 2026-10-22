@@ -2,9 +2,15 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "headers": [
     {
-      "source": "/assets/(.*)",
+      "source": "/assets/:file((?:globe|earth-night|night-sky).*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/assets/:file((?!globe|earth-night|night-sky).*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" }
       ]
     },
     {

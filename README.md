@@ -42,6 +42,14 @@ paquet est passé, elle échoue si le réseau a refusé — DNS menteur, connexi
 TLS interrompu. Un site qui répond `403` compte comme joignable : la couche réseau a
 bien fonctionné.
 
+Deux pièges. L'en-tête `Cross-Origin-Resource-Policy: same-origin` (voir plus bas) fait
+aussi échouer cette requête, exactement comme un refus du réseau : la page d'accueil de
+`claude.ai` ou de `perplexity.ai` passait ainsi pour bloquée depuis une connexion libre.
+Pour ces sites, `url` vise une adresse du même domaine qui ne porte pas l'en-tête
+(`claude.ai/api/`, `perplexity.ai/robots.txt`). Ensuite, un réseau mobile perd parfois
+une requête isolée : un échec est donc retenté une fois avant d'accuser, et le délai
+d'attente est de 15 secondes.
+
 ### 2. Sonde contenu — qui a répondu ?
 
 Le favicon du site est chargé **en tant qu'image**. Le navigateur refuse de nous la
@@ -78,8 +86,11 @@ C'est le canari, et non l'échec d'une image, qui autorise un verdict négatif.
 ### Calibration
 
 Trois domaines d'infrastructure neutres (Cloudflare, Wikipedia, Wikimedia) donnent la
-**latence normale** du réseau. Une réponse nettement plus rapide que cette référence
-n'a pas eu le temps de traverser l'Atlantique : elle vient d'un équipement local.
+**latence normale** du réseau. La référence est le **plus rapide** des trois, pas la
+médiane : les services testés sont servis par des CDN proches, souvent plus vifs que
+Wikipedia. Seule une réponse plus de six fois plus rapide que cette référence est jugée
+venir d'un équipement local — un seuil plus serré accusait des CDN sur un partage de
+connexion.
 
 Leurs icônes ont été vérifiées chargeables depuis une autre page. Un témoin dont
 l'image ne peut pas se charger fausserait la calibration — c'était le cas de
@@ -191,10 +202,17 @@ globe, planisphère et panneau :
   rend la sonde de contenu valide.
 - `icon` est **facultatif**. Si le site renvoie `Cross-Origin-Resource-Policy:
   same-origin`, mieux vaut l'omettre : la sonde échouerait toujours sans rien
-  apprendre. Vérification :
-  ```bash
-  curl -sI https://exemple.ai/favicon.ico | grep -i cross-origin
-  ```
+  apprendre.
+- **Une icône déclarée qui ne se charge pas produit un faux « bloqué »**, partout et
+  pour tout le monde. Ne jamais supposer `/favicon.ico` : beaucoup de sites renvoient
+  à cette adresse une page HTML ou une 404, et ceux qui changent leur charte déplacent
+  leurs icônes. La vérification se fait **dans un navigateur**, sur une connexion non
+  filtrée, en chargeant l'image avec `new Image()` comme le moteur — `curl` ne suffit
+  pas, Cloudflare lui renvoie des 403 que le navigateur ne voit pas. À refaire quand
+  un service sort « bloqué » sans raison.
+- Vérifier aussi que le domaine existe encore : Xiaomi a retiré
+  `aistudio.xiaomimimo.com`, dont le DNS pointe désormais sur `127.0.0.1` — ce qui
+  ressemblait trait pour trait à un blocage.
 
 ---
 

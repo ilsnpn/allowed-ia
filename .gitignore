@@ -10,3 +10,7 @@ node_modules/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# outils de test locaux
+outils-tests/
+.claude-tmp/

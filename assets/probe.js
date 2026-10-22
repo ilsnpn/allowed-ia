@@ -49,8 +49,9 @@ const STATE = {
 
 /* Une reponse plus rapide que ce seuil, rapportee a la latence
    de reference, trahit un equipement qui repond en local au
-   lieu de laisser sortir le paquet. */
-const LOCAL_ANSWER_RATIO = 0.35;
+   lieu de laisser sortir le paquet. 0.35 accusait a tort des
+   CDN proches sur un partage de connexion (141 ms contre 463). */
+const LOCAL_ANSWER_RATIO = 0.15;
 const LOCAL_ANSWER_FLOOR_MS = 25;
 
 /* En dessous de ce delai, un echec vient d'un refus immediat
@@ -236,7 +237,7 @@ function aggregate(probeResults) {
    ========================================================== */
 class ProbeEngine {
   constructor({ targets, controls, canaries, onUpdate, onTarget,
-                timeoutMs = 8000, gapMs = 250 }) {
+                timeoutMs = 15000, gapMs = 250 }) {
     this.targets = targets;
     this.controls = controls;
     this.canaries = canaries || [];
@@ -271,8 +272,12 @@ class ProbeEngine {
       }
     }
 
-    times.sort((a, b) => a - b);
-    this.baselineMs = times.length ? times[Math.floor(times.length / 2)] : 0;
+    // le PLUS RAPIDE des temoins, et non la mediane : les sites
+    // testes sont servis par des CDN proches, souvent plus vifs que
+    // Wikipedia. Sur un partage de connexion, la mediane montait a
+    // plus d'une seconde et faisait passer ces CDN pour des portails
+    // locaux. Aucun CDN ne repond trois fois plus vite que Cloudflare.
+    this.baselineMs = times.length ? Math.min(...times) : 0;
     this.contentTrusted = tried > 0 && decoded > 0;
 
     // un canari qui "repond" = le reseau fabrique des reponses
@@ -302,7 +307,14 @@ class ProbeEngine {
     const probeResults = [];
 
     for (const p of target.probes) {
-      const net = await probeNetwork(p.url, this.timeoutMs);
+      let net = await probeNetwork(p.url, this.timeoutMs);
+      // un echec isole arrive sur un reseau mobile ; un vrai blocage
+      // echoue aussi au second essai. Pas de reprise apres un delai
+      // depasse : elle doublerait l'attente sans rien apprendre.
+      if (!net.reached && !net.timedOut) {
+        await new Promise(r => setTimeout(r, 500));
+        net = await probeNetwork(p.url, this.timeoutMs);
+      }
       const content = p.icon
         ? await probeContent(p.icon, this.timeoutMs)
         : { decoded: false, ms: 0 };

@@ -37,16 +37,20 @@ const TARGETS = [
 
   { name: "CLAUDE", lat: 41.0, lng: -124.5,
     probes: [
-      // favicon volontairement absent : claude.ai renvoie
-      // Cross-Origin-Resource-Policy: same-origin, l'image ne peut
-      // pas etre chargee ici meme quand le site est parfaitement
-      // accessible. La sonde reseau suffit.
-      { label: "app", url: "https://claude.ai" },
+      // claude.ai renvoie Cross-Origin-Resource-Policy: same-origin
+      // sur sa page d'accueil, ses images et robots.txt : le fetch
+      // echoue comme si le reseau avait refuse, meme sur une
+      // connexion libre. /api/ ne porte pas cet en-tete. Aucune
+      // image du domaine n'est chargeable : pas d'icone.
+      { label: "app", url: "https://claude.ai/api/" },
     ] },
 
   { name: "PERPLEXITY", lat: 34.6, lng: -120.8,
     probes: [
-      { label: "app", url: "https://www.perplexity.ai", icon: "https://www.perplexity.ai/favicon.ico" },
+      // meme piege que claude.ai sur la page d'accueil et favicon.ico
+      // (CORP same-origin) ; robots.txt et apple-touch-icon y echappent
+      { label: "app", url: "https://www.perplexity.ai/robots.txt",
+        icon: "https://www.perplexity.ai/apple-touch-icon.png" },
     ] },
 
   { name: "GEMINI", lat: 36.6, lng: -117.6,
@@ -62,7 +66,7 @@ const TARGETS = [
 
   { name: "GROK", lat: 39.6, lng: -119.4,
     probes: [
-      { label: "app", url: "https://grok.com", icon: "https://grok.com/favicon.ico" },
+      { label: "app", url: "https://grok.com", icon: "https://grok.com/images/favicon.ico" },
     ] },
 
   { name: "COPILOT", lat: 47.7, lng: -122.1,
@@ -72,19 +76,37 @@ const TARGETS = [
 
   { name: "COPILOT (GITHUB)", lat: 44.5, lng: -119.5,
     probes: [
-      { label: "app", url: "https://github.com/copilot",
-        icon: "https://github.githubassets.com/favicons/favicon.svg" },
+      { label: "app", url: "https://github.com/copilot", icon: "https://github.com/favicon.ico" },
+    ] },
+
+  { name: "NVIDIA BUILD", lat: 38.6, lng: -113.8,
+    probes: [
+      { label: "catalogue", url: "https://build.nvidia.com", icon: "https://build.nvidia.com/favicon.ico" },
+      { label: "api", url: "https://integrate.api.nvidia.com" },
+    ] },
+
+  { name: "HIGGSFIELD", lat: 42.3, lng: -115.0,
+    probes: [
+      { label: "app", url: "https://higgsfield.ai", icon: "https://higgsfield.ai/favicon.ico" },
     ] },
 
   // --- Europe
+  { name: "ELEVENLABS", lat: 51.5, lng: -0.1,
+    probes: [
+      { label: "app", url: "https://elevenlabs.io/app", icon: "https://elevenlabs.io/favicon.ico" },
+      { label: "api", url: "https://api.elevenlabs.io" },
+    ] },
+
   { name: "LE CHAT (MISTRAL)", lat: 48.85, lng: 2.35,
     probes: [
-      { label: "chat", url: "https://chat.mistral.ai", icon: "https://chat.mistral.ai/favicon.ico" },
+      // aucune image de chat.mistral.ai n'est chargeable depuis
+      // ailleurs (favicon.ico renvoie du HTML) : pas d'icone
+      { label: "chat", url: "https://chat.mistral.ai" },
     ] },
 
   { name: "LUMO (PROTON)", lat: 44.9, lng: 4.6,   // Geneve, ecarte au sud-ouest
     probes: [
-      { label: "app", url: "https://lumo.proton.me", icon: "https://lumo.proton.me/favicon.ico" },
+      { label: "app", url: "https://lumo.proton.me", icon: "https://lumo.proton.me/assets/favicon.ico" },
     ] },
 
   { name: "EURIA (INFOMANIAK)", lat: 47.6, lng: 9.8,   // Geneve, ecarte au nord-est
@@ -100,7 +122,11 @@ const TARGETS = [
 
   { name: "MIMO (XIAOMI)", lat: 43.0, lng: 112.5,
     probes: [
-      { label: "app", url: "https://aistudio.xiaomimimo.com", icon: "https://aistudio.xiaomimimo.com/favicon.ico" },
+      // aistudio.xiaomimimo.com a ete retire par Xiaomi : son DNS
+      // pointe sur 127.0.0.1 partout, ce qui passait pour un blocage
+      { label: "site", url: "https://mimo.xiaomi.com" },
+      { label: "plateforme", url: "https://platform.xiaomimimo.com",
+        icon: "https://platform.xiaomimimo.com/favicon.png" },
     ] },
 
   { name: "MINIMAX", lat: 31.2, lng: 122.8,
@@ -108,17 +134,20 @@ const TARGETS = [
       { label: "chat", url: "https://chat.minimax.io", icon: "https://chat.minimax.io/favicon.ico" },
       // le point qui manquait : la page s'ouvre, mais lancer un
       // modele depuis agent.minimax.io ne passe pas
-      { label: "agent", url: "https://agent.minimax.io", icon: "https://agent.minimax.io/favicon.ico" },
+      { label: "agent", url: "https://agent.minimax.io",
+        icon: "https://agent.minimax.io/assets/logo/favicon_v2.png" },
     ] },
 
   { name: "DEEPSEEK", lat: 27.3, lng: 117.0,
     probes: [
-      { label: "chat", url: "https://chat.deepseek.com", icon: "https://chat.deepseek.com/favicon.ico" },
+      // chat.deepseek.com ne sert aucune image chargeable d'ailleurs ;
+      // celle de son CDN, sur le meme domaine deepseek.com, l'est
+      { label: "chat", url: "https://chat.deepseek.com", icon: "https://cdn.deepseek.com/chat/icon.png" },
     ] },
 
   { name: "QWEN (ALIBABA)", lat: 30.3, lng: 120.2,
     probes: [
-      { label: "chat", url: "https://chat.qwen.ai", icon: "https://chat.qwen.ai/favicon.ico" },
+      { label: "chat", url: "https://chat.qwen.ai", icon: "https://chat.qwen.ai/static/favicon.png" },
     ] },
 ];
 
